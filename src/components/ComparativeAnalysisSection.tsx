@@ -56,9 +56,9 @@ export default function ComparativeAnalysisSection({
     });
   }, [targetEn]);
 
-  const roLabel = `Document 1 (${targetRo.fileName})`;
+  const roLabel = `(${targetRo.fileName})`;
 
-  const enLabel = `Document 2 (${targetEn.fileName})`;
+  const enLabel = `(${targetEn.fileName})`;
 
   useEffect(() => {
     if (!chartCanvasRef.current) return;

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Analiză Fișiere Text",
-  description: "Încarcă fișiere .txt pentru analiză",
+  description: "Încarcă fișiere pentru analiză",
 };
 
 export default function RootLayout({
