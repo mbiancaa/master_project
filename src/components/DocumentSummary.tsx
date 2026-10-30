@@ -1,0 +1,692 @@
+"use client";
+
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { Chart as ChartType } from "chart.js";
+import Chart from "chart.js/auto";
+import type { DocumentAnalysis } from "@/lib/fileParser";
+
+interface DocumentSummaryProps {
+  analysis: DocumentAnalysis;
+  colorScheme?: "purple" | "blue";
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default function DocumentSummary({
+  analysis,
+  colorScheme = "purple",
+}: DocumentSummaryProps) {
+  const [filterMode, setFilterMode] = useState<"letters" | "vowels" | "consonants" | "all">("letters");
+  const [sortBy, setSortBy] = useState<"count" | "alpha">("count");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const barCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pieCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const barChartInstance = useRef<ChartType | null>(null);
+  const pieChartInstance = useRef<ChartType | null>(null);
+
+  const componentId = useId();
+
+  const displayedItems = useMemo(() => {
+    let list = [...analysis.allCharFrequencies];
+
+    if (filterMode === "letters") {
+      list = [...analysis.letterFrequencies];
+    } else if (filterMode === "vowels") {
+      list = analysis.letterFrequencies.filter((item) => item.isVowel);
+    } else if (filterMode === "consonants") {
+      list = analysis.letterFrequencies.filter((item) => !item.isVowel);
+    }
+
+    list.sort((a, b) => {
+      if (sortBy === "count") {
+        return sortOrder === "desc" ? b.count - a.count : a.count - b.count;
+      }
+      return sortOrder === "desc"
+        ? b.char.localeCompare(a.char, "ro")
+        : a.char.localeCompare(b.char, "ro");
+    });
+
+    return list;
+  }, [analysis, filterMode, sortBy, sortOrder]);
+
+  const primaryColor = colorScheme === "purple" ? "#8b5cf6" : "#3b82f6";
+  const primaryColorLight =
+    colorScheme === "purple"
+      ? "rgba(139, 92, 246, 0.65)"
+      : "rgba(59, 130, 246, 0.65)";
+
+  useEffect(() => {
+    if (!barCanvasRef.current) return;
+
+    if (barChartInstance.current) {
+      barChartInstance.current.destroy();
+      barChartInstance.current = null;
+    }
+
+    const itemsForBar =
+      filterMode === "all"
+        ? analysis.allCharFrequencies.slice(0, 30)
+        : filterMode === "vowels"
+          ? analysis.letterFrequencies.filter((i) => i.isVowel)
+          : filterMode === "consonants"
+            ? analysis.letterFrequencies.filter((i) => !i.isVowel)
+            : analysis.letterFrequencies;
+
+    const labels = itemsForBar.map((item) =>
+      item.char === " " ? "spațiu" : item.char
+    );
+    const data = itemsForBar.map((item) =>
+      Number(item.relativeFrequency.toFixed(3))
+    );
+
+    const ctx = barCanvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    barChartInstance.current = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Frecvență relativă (%)",
+            data,
+            backgroundColor: primaryColorLight,
+            borderColor: primaryColor,
+            borderWidth: 1.5,
+            borderRadius: 6,
+            hoverBackgroundColor: primaryColor,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const item = itemsForBar[context.dataIndex];
+                return [
+                  ` Frecvență: ${item.relativeFrequency.toFixed(3)}%`,
+                  ` Apariții: ${item.count.toLocaleString("ro-RO")}`,
+                ];
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              font: { size: 11, family: "monospace" },
+              color: "#6b7280",
+            },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: (val) => `${val}%`,
+              font: { size: 10 },
+              color: "#9ca3af",
+            },
+            grid: {
+              color: "rgba(0, 0, 0, 0.05)",
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      if (barChartInstance.current) {
+        barChartInstance.current.destroy();
+        barChartInstance.current = null;
+      }
+    };
+  }, [analysis, filterMode, primaryColor, primaryColorLight]);
+
+  useEffect(() => {
+    if (!pieCanvasRef.current) return;
+
+    if (pieChartInstance.current) {
+      pieChartInstance.current.destroy();
+      pieChartInstance.current = null;
+    }
+
+    const sourceList =
+      filterMode === "all"
+        ? analysis.allCharFrequencies
+        : filterMode === "vowels"
+          ? analysis.letterFrequencies.filter((i) => i.isVowel)
+          : filterMode === "consonants"
+            ? analysis.letterFrequencies.filter((i) => !i.isVowel)
+            : analysis.letterFrequencies;
+
+    const labels = sourceList.map((item) =>
+      item.char === " " ? "spațiu" : item.char
+    );
+    const data = sourceList.map((item) =>
+      Number(item.relativeFrequency.toFixed(3))
+    );
+
+    const bgColors = sourceList.map((_, i) => {
+      const hue = Math.round((i * 137.508) % 360);
+      return `hsl(${hue}, 70%, 60%)`;
+    });
+
+    const ctx = pieCanvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    pieChartInstance.current = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [
+          {
+            data,
+            backgroundColor: bgColors,
+            borderColor: "#ffffff",
+            borderWidth: 1.5,
+            hoverOffset: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              boxWidth: 8,
+              boxHeight: 8,
+              padding: 5,
+              font: { size: 9, family: "monospace" },
+              color: "#4b5563",
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const label = context.label || "";
+                const val = context.parsed || 0;
+                const item = sourceList[context.dataIndex];
+                return [
+                  ` Literă: ${label}`,
+                  ` Frecvență: ${val.toFixed(3)}%`,
+                  ` Apariții: ${item?.count.toLocaleString("ro-RO") || 0}`,
+                ];
+              },
+            },
+          },
+        },
+        cutout: "45%",
+      },
+    });
+
+    return () => {
+      if (pieChartInstance.current) {
+        pieChartInstance.current.destroy();
+        pieChartInstance.current = null;
+      }
+    };
+  }, [analysis, filterMode]);
+
+  return (
+    <div className="summary-card flex flex-col gap-6 p-6 sm:p-7 rounded-2xl bg-white/90 backdrop-blur-xl border border-white/70 shadow-xl overflow-hidden">
+      <div className="flex items-start justify-between gap-3 pb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorScheme === "purple"
+              ? "bg-purple-100 text-purple-600"
+              : "bg-blue-100 text-blue-600"
+              }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+              />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h3
+              className="font-bold text-base sm:text-lg text-gray-900 truncate"
+              title={analysis.fileName}
+            >
+              {analysis.fileName}
+            </h3>
+            <p className="text-xs text-gray-400">
+              {formatSize(analysis.fileSize)} · Validat cu succes (≥ 50.000 litere)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-3">
+        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
+          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+            Denumire fișier
+          </span>
+          <span
+            className="font-bold text-sm text-gray-900 block mt-0.5"
+            title={analysis.fileName}
+          >
+            {analysis.fileName}
+          </span>
+        </div>
+
+        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
+          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+            Total caractere fără spații
+          </span>
+          <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+            {analysis.totalCharsNoSpaces.toLocaleString("ro-RO")}
+          </span>
+        </div>
+
+        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
+          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+            Număr total de litere
+          </span>
+          <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+            {analysis.totalLetters.toLocaleString("ro-RO")}
+          </span>
+        </div>
+
+        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
+          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+            Total caractere distincte
+          </span>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="font-extrabold text-base sm:text-lg text-purple-700">
+              {analysis.totalDistinctChars}
+            </span>
+            <span className="text-xs text-gray-500">
+              ({analysis.totalDistinctLetters} litere cf. regex)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-1 border-t border-purple-100/60">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="stat-box p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100/70">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-indigo-900 uppercase tracking-wider">
+                Consoane
+              </span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                {analysis.consonantFrequency.toFixed(2)}%
+              </span>
+            </div>
+            <span className="font-extrabold text-lg text-indigo-700 block mt-1">
+              {analysis.totalConsonants.toLocaleString("ro-RO")}
+            </span>
+            <span className="text-[11px] text-gray-500 block mt-0.5">
+              din {analysis.totalLetters.toLocaleString("ro-RO")} litere
+            </span>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-pink-50/60 border border-pink-100/70">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-pink-900 uppercase tracking-wider">
+                Vocale
+              </span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">
+                {analysis.vowelFrequency.toFixed(2)}%
+              </span>
+            </div>
+            <span className="font-extrabold text-lg text-pink-700 block mt-1">
+              {analysis.totalVowels.toLocaleString("ro-RO")}
+            </span>
+            <span className="text-[11px] text-gray-500 block mt-0.5">
+              din {analysis.totalLetters.toLocaleString("ro-RO")} litere
+            </span>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-amber-50/60 border border-amber-100/70">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-amber-900 uppercase tracking-wider">
+                Litere absente
+              </span>
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 truncate max-w-[120px]"
+                title={`Alfabet detectat: ${analysis.alphabetName}`}
+              >
+                {analysis.alphabetName}
+              </span>
+            </div>
+            <span className="font-extrabold text-lg text-amber-700 block mt-1">
+              {analysis.missingLettersCount}{" "}
+              <span className="text-xs font-normal text-gray-500">
+                din {analysis.alphabetTotalLetters}
+              </span>
+            </span>
+            <span
+              className="text-[11px] text-gray-600 truncate block mt-0.5"
+              title={
+                analysis.missingLetters.length > 0
+                  ? `Litere care nu apar: ${analysis.missingLetters.join(", ")}`
+                  : "Toate literele din alfabet apar în text"
+              }
+            >
+              {analysis.missingLetters.length > 0 ? (
+                <>
+                  Absente:{" "}
+                  <span className="font-mono font-medium text-amber-900">
+                    {analysis.missingLetters.join(", ")}
+                  </span>
+                </>
+              ) : (
+                <span className="text-green-600 font-medium">✓ Alfabet complet</span>
+              )}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 p-3 rounded-xl bg-gray-50/70 border border-gray-100" style={{ marginTop: 30 }}>
+          <div className="flex items-center justify-between text-xs text-gray-600 font-medium">
+            <span className="flex items-center gap-1.5 text-pink-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block" />
+              Vocale: {analysis.vowelFrequency.toFixed(1)}% ({analysis.totalVowels.toLocaleString("ro-RO")})
+            </span>
+            <span className="flex items-center gap-1.5 text-indigo-700">
+              Consoane: {analysis.consonantFrequency.toFixed(1)}% ({analysis.totalConsonants.toLocaleString("ro-RO")})
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden flex">
+            <div
+              className="h-full bg-pink-500 transition-all duration-500"
+              style={{ width: `${analysis.vowelFrequency}%` }}
+              title={`Vocale: ${analysis.vowelFrequency.toFixed(2)}%`}
+            />
+            <div
+              className="h-full bg-indigo-500 transition-all duration-500"
+              style={{ width: `${analysis.consonantFrequency}%` }}
+              title={`Consoane: ${analysis.consonantFrequency.toFixed(2)}%`}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-1 border-t border-purple-100/60">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="stat-box p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100/80 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-emerald-900 uppercase tracking-wider block">
+                Cea mai frecventă literă
+              </span>
+              {analysis.mostFrequentLetter ? (
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="font-mono font-extrabold text-2xl text-emerald-700">
+                    {analysis.mostFrequentLetter.char.toUpperCase()}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-800">
+                    {analysis.mostFrequentLetter.relativeFrequency.toFixed(2)}%
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400">-</span>
+              )}
+              <span className="text-[11px] text-gray-500 block">
+                {analysis.mostFrequentLetter?.count.toLocaleString("ro-RO")} apariții
+              </span>
+            </div>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-rose-50/70 border border-rose-100/80 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[11px] font-semibold text-rose-900 uppercase tracking-wider block">
+                Cea mai rară literă
+              </span>
+              {analysis.leastFrequentLetter ? (
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="font-mono font-extrabold text-2xl text-rose-700">
+                    {analysis.leastFrequentLetter.char.toUpperCase()}
+                  </span>
+                  <span className="text-xs font-semibold text-rose-800">
+                    {analysis.leastFrequentLetter.relativeFrequency.toFixed(3)}%
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400">-</span>
+              )}
+              <span className="text-[11px] text-gray-500 block">
+                {analysis.leastFrequentLetter?.count.toLocaleString("ro-RO")} apariții
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div style={{ marginBottom: 15 }}>
+            <h4 className="font-bold text-sm text-gray-900">
+              Frecvența caracterelor
+            </h4>
+            <p className="text-xs text-gray-500">
+              În raport cu totalul de{" "}
+              {analysis.totalLetters.toLocaleString("ro-RO")} litere
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex rounded-lg p-0.5 bg-gray-100 text-xs flex-wrap">
+              <button
+                className={`px-2 py-1 rounded-md transition-all font-medium ${filterMode === "letters"
+                  ? "bg-white text-purple-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+                  }`}
+                style={{ padding: "4px 6px" }}
+                onClick={() => setFilterMode("letters")}
+              >
+                Litere ({analysis.totalDistinctLetters})
+              </button>
+              <button
+                className={`px-2 py-1 rounded-md transition-all font-medium ${filterMode === "vowels"
+                  ? "bg-white text-pink-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+                  }`}
+                style={{ padding: "4px 6px" }}
+                onClick={() => setFilterMode("vowels")}
+              >
+                Vocale
+              </button>
+              <button
+                className={`px-2 py-1 rounded-md transition-all font-medium ${filterMode === "consonants"
+                  ? "bg-white text-indigo-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+                  }`}
+                style={{ padding: "4px 6px" }}
+                onClick={() => setFilterMode("consonants")}
+              >
+                Consoane
+              </button>
+              <button
+                className={`px-2 py-1 rounded-md transition-all font-medium ${filterMode === "all"
+                  ? "bg-white text-purple-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+                  }`}
+                style={{ padding: "4px 6px" }}
+                onClick={() => setFilterMode("all")}
+              >
+                Toate ({analysis.totalDistinctChars})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-gray-200/80 rounded-xl overflow-hidden overflow-y-auto bg-white/70" style={{ maxHeight: 450, overflow: 'scroll' }}>
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 bg-gray-50/95 backdrop-blur border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider text-[10px]">
+              <tr>
+                <th className="py-2.5 px-3 w-10 text-center">#</th>
+                <th
+                  className="py-2.5 px-3 cursor-pointer hover:text-purple-600 select-none"
+                  onClick={() => {
+                    if (sortBy === "alpha") {
+                      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+                    } else {
+                      setSortBy("alpha");
+                      setSortOrder("asc");
+                    }
+                  }}
+                  title="Sortează după caracter"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Caracter</span>
+                    {sortBy === "alpha" && (
+                      <span>{sortOrder === "asc" ? "↑" : "↓"}</span>
+                    )}
+                  </div>
+                </th>
+
+                <th
+                  className="py-2.5 px-3 text-right cursor-pointer hover:text-purple-600 select-none"
+                  onClick={() => {
+                    if (sortBy === "count") {
+                      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+                    } else {
+                      setSortBy("count");
+                      setSortOrder("desc");
+                    }
+                  }}
+                  title="Sortează după număr apariții"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Apariții</span>
+                    {sortBy === "count" && (
+                      <span>{sortOrder === "desc" ? "↓" : "↑"}</span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="py-2.5 px-3 text-right cursor-pointer hover:text-purple-600 select-none whitespace-nowrap"
+                  onClick={() => {
+                    if (sortBy === "count") {
+                      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+                    } else {
+                      setSortBy("count");
+                      setSortOrder("desc");
+                    }
+                  }}
+                  title="f_char"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>f_char</span>
+                    {sortBy === "count" && (
+                      <span>{sortOrder === "desc" ? "↓" : "↑"}</span>
+                    )}
+                  </div>
+                </th>
+                <th className="py-2.5 px-3 text-right min-w-[130px]">
+                  Frecvență relativă (%)
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {displayedItems.map((item, idx) => {
+                const maxPct =
+                  displayedItems[0]?.relativeFrequency || 1;
+                const barWidth = Math.min(
+                  100,
+                  Math.max(4, (item.relativeFrequency / maxPct) * 100)
+                );
+                const safeTotal =
+                  analysis.totalLetters > 0 ? analysis.totalLetters : 1;
+                const fChar = item.count / safeTotal;
+
+                return (
+                  <tr
+                    key={`${componentId}-${item.char}-${idx}`}
+                    className="hover:bg-purple-50/40 transition-colors"
+                  >
+                    <td className="py-2 px-3 text-center text-gray-400 text-[11px]">
+                      {idx + 1}
+                    </td>
+                    <td className="py-2 px-3 font-mono font-bold text-sm text-gray-900">
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-gray-100 text-purple-900 border border-gray-200/60 min-w-[24px] text-center">
+                        {item.char}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right font-medium text-purple-700">
+                      {item.count.toLocaleString("ro-RO")}
+                    </td>
+                    <td
+                      className="py-2 px-3 text-right text-xs font-semibold whitespace-nowrap"
+                      title={`f_Char = Nx (${item.count.toLocaleString("ro-RO")}) / Ntotal (${analysis.totalLetters.toLocaleString("ro-RO")}) = ${(item.count / safeTotal).toFixed(6)}`}
+                    >
+                      <span className="inline-block px-1.5 py-0.5 text-purple-700">
+                        {fChar.toFixed(5)}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="font-semibold text-purple-700 w-14 text-right">
+                          {item.relativeFrequency.toFixed(3)}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5" style={{ marginBottom: 15 }}>
+            Frecvența relativă (%)
+          </h4>
+          <span className="text-[11px] text-gray-400">
+            {filterMode === "all"
+              ? "Top 30 caractere"
+              : filterMode === "vowels"
+                ? "Toate vocalele"
+                : filterMode === "consonants"
+                  ? "Toate consoanele"
+                  : "Toate literele"}
+          </span>
+        </div>
+        <div className="h-56 sm:h-64 w-full bg-white/60 p-3 rounded-xl border border-gray-100">
+          <canvas ref={barCanvasRef} />
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5" style={{ marginBottom: 15 }}>
+            Distribuția completă
+          </h4>
+          <span className="text-[11px] text-purple-600 font-medium">
+            Toate cele {displayedItems.length} litere afișate individual
+          </span>
+        </div>
+        <div className="h-72 sm:h-80 w-full bg-white/60 p-3 rounded-xl border border-gray-100">
+          <canvas ref={pieCanvasRef} />
+        </div>
+      </div>
+    </div>
+  );
+}

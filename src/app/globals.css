@@ -5,22 +5,293 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Animated gradient background ─────────────────────────────── */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg,
+      #a8c8ff 0%,
+      #c4a8ff 20%,
+      #e8a8e8 40%,
+      #ff9bd2 60%,
+      #c4a8ff 80%,
+      #a8c8ff 100%);
+  background-size: 300% 300%;
+  animation: gradientShift 10s ease infinite;
+  position: relative;
+}
+
+/* Frosted white center haze */
+.gradient-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 50% 38%,
+      rgba(255, 255, 255, 0.82) 0%,
+      rgba(255, 255, 255, 0.30) 55%,
+      transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Upload card ──────────────────────────────────────────────── */
+.upload-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+/* ── Drop zone ────────────────────────────────────────────────── */
+.drop-zone {
+  min-height: 30px;
+  align-items: start !important;
+  margin-bottom: 40px;
+  padding: 15px;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.drop-zone.drag-over {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+/* ── Card action bar ──────────────────────────────────────────── */
+.card-action-bar {
+  border-top: 1px solid rgba(160, 130, 220, 0.14);
+  background: rgba(250, 248, 255, 0.6);
+  border-radius: 0 0 20px 20px;
+}
+
+/* ── + button (bottom-left) ───────────────────────────────────── */
+.btn-plus {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid lab(87 -0.53 -4.76);
+  background: rgba(255, 255, 255, 0.9);
+  color: #b7b1b1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, opacity 0.15s;
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+}
+
+.btn-plus:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.7);
+  transform: scale(1.08);
+}
+
+.btn-plus:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-plus:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: rgba(160, 130, 220, 0.2);
+  color: #a0aec0;
+}
+
+/* ── → button (bottom-right) ─────────────────────────────────── */
+.btn-arrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+}
+
+.btn-arrow:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: scale(1.08);
+}
+
+.btn-arrow:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── File chip (in action bar) ────────────────────────────────── */
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 7px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  max-width: 240px;
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 399px) {
+  .file-chip {
+    max-width: 140px;
+  }
+}
+
+/* Valid chip state */
+.file-chip.file-chip-valid {
+  background: rgba(240, 253, 244, 0.95);
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+
+/* Invalid / non-compliant chip state (marked in RED) */
+.file-chip.file-chip-invalid {
+  background: rgba(254, 242, 242, 0.95);
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+
+.chip-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.chip-badge-invalid {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+.chip-badge-valid {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+
+/* ── Chip × remove button ─────────────────────────────────────── */
+.chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 1px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.chip-remove:hover {
+  color: #ef4444;
+}
+
+/* ── Status colours ───────────────────────────────────────────── */
+.status-ok {
+  color: #16a34a;
+}
+
+.status-err {
+  color: #dc2626;
+}
+
+.docs-uploaded {
+  margin-top: 15px;
+  margin-left: 15px;
+  margin-right: 15px;
+  z-index: 99;
+  display: flex;
+  align-items: stretch;
+}
+
+/* ── Summary card & scrollbar ─────────────────────────────────── */
+.summary-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 20px;
+}
+
+.summary-card:hover {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.09);
+}
+
+.summary-card ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.summary-card ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+}
+
+.summary-card ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.25);
+  border-radius: 4px;
+}
+
+.summary-card ::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.45);
+}
+
+.stat-box {
+  padding: 12px 12px;
+}
+
+table th {
+  padding: 14px 4px;
+}
+
+table td {
+  padding: 10px 4px;
 }

@@ -1,69 +1,516 @@
-import Image from "next/image";
+"use client";
+
+import { useRef, useState } from "react";
+import {
+  analyzeDocumentText,
+  countLetters,
+  type DocumentAnalysis,
+  MIN_LETTERS_REQUIRED,
+  parseFileText,
+} from "@/lib/fileParser";
+import DocumentSummary from "@/components/DocumentSummary";
+import ComparativeAnalysisSection from "@/components/ComparativeAnalysisSection";
+
+const MAX_FILES = 2;
+
+const ALLOWED_EXTENSIONS = new Set([".txt", ".docx", ".md", ".pdf"]);
+
+interface FileInfo {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  status: "idle" | "valid" | "invalid";
+  letterCount?: number;
+  errorMessage?: string;
+}
+
+interface ValidationReport {
+  checked: boolean;
+  allValid: boolean;
+  invalidFiles: { name: string; count: number; error?: string }[];
+  validFiles: { name: string; count: number }[];
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function truncateName(name: string, max = 20): string {
+  if (name.length <= max) return name;
+  const ext = name.slice(name.lastIndexOf("."));
+  return name.slice(0, max - ext.length - 1) + "…" + ext;
+}
+
+function isAllowed(file: File): boolean {
+  const dot = file.name.lastIndexOf(".");
+  if (dot === -1) return false;
+  return ALLOWED_EXTENSIONS.has(file.name.slice(dot).toLowerCase());
+}
 
 export default function Home() {
+  const [files, setFiles] = useState<FileInfo[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+  const [report, setReport] = useState<ValidationReport | null>(null);
+  const [analyses, setAnalyses] = useState<DocumentAnalysis[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isFull = files.length >= MAX_FILES;
+  const hasFiles = files.length > 0;
+
+
+  const addFiles = (incoming: File[]) => {
+    setUploadError("");
+    setReport(null);
+    setAnalyses([]);
+
+    const invalid = incoming.filter((f) => !isAllowed(f));
+    if (invalid.length > 0) {
+      setUploadError(
+        `Format neacceptat: ${invalid.map((f) => f.name).join(", ")}. Sunt permise doar: .txt · .docx · .md · .pdf`
+      );
+      return;
+    }
+
+    setFiles((prev) => {
+      const remaining = MAX_FILES - prev.length;
+      if (remaining <= 0) return prev;
+      const toAdd: FileInfo[] = incoming.slice(0, remaining).map((f) => ({
+        id: `${f.name}-${f.size}-${Date.now()}-${Math.random()}`,
+        file: f,
+        name: f.name,
+        size: f.size,
+        status: "idle",
+      }));
+      return [...prev, ...toAdd];
+    });
+
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+    setUploadError("");
+    setReport(null);
+    setAnalyses([]);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addFiles(Array.from(e.target.files));
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files) addFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => setIsDragOver(false);
+
+
+  const handleSubmit = async () => {
+    if (!hasFiles || isValidating) return;
+
+    setIsValidating(true);
+    setUploadError("");
+    setReport(null);
+    setAnalyses([]);
+
+    try {
+      const computedAnalyses: DocumentAnalysis[] = [];
+
+      const processed = await Promise.all(
+        files.map(async (item) => {
+          try {
+            const rawText = await parseFileText(item.file);
+
+            const count = countLetters(rawText);
+            const isValid = count >= MIN_LETTERS_REQUIRED;
+
+            if (isValid) {
+              const analysis = analyzeDocumentText(item.name, item.size, rawText);
+              computedAnalyses.push(analysis);
+            }
+
+            return {
+              ...item,
+              status: (isValid ? "valid" : "invalid") as "valid" | "invalid",
+              letterCount: count,
+              errorMessage: isValid
+                ? undefined
+                : `Are doar ${count.toLocaleString("ro-RO")} litere (minim necesar: ${MIN_LETTERS_REQUIRED.toLocaleString("ro-RO")})`,
+            };
+          } catch (err: any) {
+            return {
+              ...item,
+              status: "invalid" as const,
+              letterCount: 0,
+              errorMessage: err?.message || "Eroare la parsarea conținutului",
+            };
+          }
+        })
+      );
+
+      setFiles(processed);
+
+      const invalidList = processed
+        .filter((f) => f.status === "invalid")
+        .map((f) => ({
+          name: f.name,
+          count: f.letterCount ?? 0,
+          error: f.errorMessage,
+        }));
+
+      const validList = processed
+        .filter((f) => f.status === "valid")
+        .map((f) => ({
+          name: f.name,
+          count: f.letterCount ?? 0,
+        }));
+
+      const allValid = invalidList.length === 0;
+
+      setReport({
+        checked: true,
+        allValid,
+        invalidFiles: invalidList,
+        validFiles: validList,
+      });
+
+      if (allValid) {
+        setAnalyses(computedAnalyses);
+      }
+    } catch {
+      setUploadError("A apărut o eroare neașteptată la validarea fișierelor.");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="gradient-bg flex flex-col items-center min-h-screen px-4 py-10 sm:px-6">
+      <div className="relative z-10 flex flex-col items-center gap-6 w-full" style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 60, paddingBottom: 60 }}>
+        <div className="text-center space-y-2 px-2 max-w-2xl">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 leading-tight">
+            Analizează documente textuale
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xs sm:text-sm text-gray-500 select-none">
+            Maxim {MAX_FILES} fișiere de tip .txt, .docx, .md sau .pdf
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="upload-card w-full max-w-xl overflow-hidden max-w-7xl">
+          {files.length > 0 && (
+            <div className="docs-uploaded flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              {files.map((f) => {
+                const isInvalid = f.status === "invalid";
+                const isValid = f.status === "valid";
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`file-chip ${isInvalid
+                      ? "file-chip-invalid"
+                      : isValid
+                        ? "file-chip-valid"
+                        : ""
+                      }`}
+                  >
+                    {isInvalid ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 text-red-500 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+                        />
+                      </svg>
+                    ) : isValid ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 text-green-500 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m4.5 12.75 6 6 9-13.5"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 text-purple-400 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                        />
+                      </svg>
+                    )}
+
+                    <span
+                      className={`text-xs leading-none ${isInvalid
+                        ? "text-red-700 font-medium"
+                        : isValid
+                          ? "text-green-700 font-medium"
+                          : "text-gray-600"
+                        }`}
+                      title={`${f.name} · ${formatSize(f.size)}${f.letterCount !== undefined
+                        ? ` · ${f.letterCount.toLocaleString("ro-RO")} litere`
+                        : ""
+                        }`}
+                    >
+                      {truncateName(f.name)}
+                    </span>
+
+                    {f.letterCount !== undefined && (
+                      <span
+                        className={`chip-badge ${isInvalid ? "chip-badge-invalid" : "chip-badge-valid"
+                          }`}
+                      >
+                        {f.letterCount.toLocaleString("ro-RO")}
+                      </span>
+                    )}
+
+                    <button
+                      className="chip-remove"
+                      onClick={() => removeFile(f.id)}
+                      title={`Elimină ${f.name}`}
+                      aria-label={`Elimină ${f.name}`}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18 18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div
+            className={`drop-zone flex flex-col items-center justify-center gap-2 px-6 cursor-pointer ${isDragOver ? "drag-over" : ""
+              } ${isFull ? "pointer-events-none" : ""}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => !isFull && inputRef.current?.click()}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {isValidating ? (
+              <div className="flex items-center gap-2 text-purple-600 text-sm font-medium py-2">
+                <svg
+                  className="animate-spin w-4 h-4 text-purple-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Se analizează și validează conținutul fișierelor...</span>
+              </div>
+            ) : report?.checked ? (
+              report.allValid ? (
+                <div className="status-ok text-sm sm:text-base text-center space-y-1 py-1">
+                  <p className="font-semibold text-green-500">
+                    Conținutul fișierelor este valid.
+                  </p>
+                </div>
+              ) : (
+                <div className="status-err text-xs sm:text-sm text-center space-y-1.5 py-1">
+                  <p className="font-semibold text-red-600">
+                    ⚠️ Următoarele fișiere nu sunt conforme (sub 50.000 de
+                    litere):
+                  </p>
+                  <div className="space-y-0.5 text-xs text-red-500">
+                    {report.invalidFiles.map((inv) => (
+                      <p key={inv.name}>
+                        <span className="font-medium text-red-700">
+                          {inv.name}
+                        </span>
+                        :{" "}
+                        {inv.error ||
+                          `${inv.count.toLocaleString("ro-RO")} litere (necesar minim 50.000)`}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : uploadError ? (
+              <p className="status-err text-sm sm:text-base text-center">
+                {uploadError}
+              </p>
+            ) : isFull ? (
+              <p className="text-sm sm:text-base text-gray-400 text-center">
+                Numărul maxim de fișiere a fost atins.
+              </p>
+            ) : (
+              <p className="text-sm sm:text-base text-gray-400 text-center select-none">
+                Încarcă un fișier pentru a începe analiza.
+              </p>
+            )}
+          </div>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".txt,.docx,.md,.pdf"
+            multiple
+            className="hidden"
+            onChange={handleInputChange}
+          />
+
+          <button
+            className="btn-plus flex-shrink-0"
+            disabled={isFull || isValidating}
+            onClick={() => inputRef.current?.click()}
+            title={
+              isFull
+                ? "Limita de fișiere atinsă (maxim 2)"
+                : "Adaugă fișier (.txt, .docx, .md, .pdf)"
+            }
+            aria-label="Adaugă fișier"
           >
-            Documentation
-          </a>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4.5v15m7.5-7.5h-15"
+              />
+            </svg>
+          </button>
+
+          <button
+            className="btn-arrow flex-shrink-0"
+            disabled={!hasFiles || isValidating}
+            onClick={handleSubmit}
+            title={
+              isValidating
+                ? "Se validează..."
+                : hasFiles
+                  ? "Validează fișierele și generează sumarul"
+                  : "Adaugă cel puțin un fișier"
+            }
+            aria-label="Validează fișierele"
+          >
+            {isValidating ? (
+              <svg
+                className="animate-spin w-4 h-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                />
+              </svg>
+            )}
+          </button>
         </div>
-      </main>
-    </div>
+
+        {report?.allValid && analyses.length > 0 && (
+          <section className="w-full mt-4 mb-10 space-y-6" style={{ marginTop: 0 }}>
+            <div
+              className={`grid grid-cols-1 ${analyses.length > 1
+                ? "lg:grid-cols-2"
+                : "mx-auto"
+                } gap-6 sm:gap-8 items-start`}
+              style={{ marginTop: 60 }}
+            >
+              {analyses.map((analysis, index) => (
+                <DocumentSummary
+                  key={`${analysis.fileName}-${index}`}
+                  analysis={analysis}
+                  colorScheme={index === 0 ? "purple" : "blue"}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {report?.allValid && analyses.length >= 2 && (
+          <ComparativeAnalysisSection analyses={analyses} />
+        )}
+      </div>
+    </main>
   );
 }
