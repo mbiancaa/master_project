@@ -19,7 +19,6 @@ export default function ComparativeAnalysisSection({
   const file1: DocumentAnalysis | undefined = analyses[0];
   const file2: DocumentAnalysis | undefined = analyses[1];
 
-  // Detect Romanian and English files if available
   const roFile = analyses.find((a) => a.alphabetType === "romanian");
   const enFile = analyses.find((a) => a.alphabetType === "english");
 
@@ -27,7 +26,6 @@ export default function ComparativeAnalysisSection({
   const targetEn: DocumentAnalysis | undefined =
     enFile && enFile !== targetRo ? enFile : file2 || file1;
 
-  // Compute dataset for Romanian from uploaded file
   const roData = useMemo(() => {
     if (!targetRo) return ALL_COMPARED_LETTERS.map(() => 0);
 
@@ -38,14 +36,12 @@ export default function ComparativeAnalysisSection({
 
     return ALL_COMPARED_LETTERS.map((letter) => {
       let val = freqMap.get(letter) || 0;
-      // Merge legacy variants if any
       if (letter === "ș") val += freqMap.get("ş") || 0;
       if (letter === "ț") val += freqMap.get("ţ") || 0;
       return Number(val.toFixed(3));
     });
   }, [targetRo]);
 
-  // Compute dataset for English from uploaded file
   const enData = useMemo(() => {
     if (!targetEn) return ALL_COMPARED_LETTERS.map(() => 0);
 
@@ -60,12 +56,10 @@ export default function ComparativeAnalysisSection({
     });
   }, [targetEn]);
 
-  // Labels for the chart
   const roLabel = `Document 1 (${targetRo.fileName})`;
 
   const enLabel = `Document 2 (${targetEn.fileName})`;
 
-  // Initialize and update Grouped Bar Chart
   useEffect(() => {
     if (!chartCanvasRef.current) return;
 
