@@ -236,7 +236,7 @@ export default function DocumentSummary({
 
   return (
     <div className="summary-card flex flex-col gap-6 p-6 sm:p-7 rounded-2xl bg-white/90 backdrop-blur-xl border border-white/70 shadow-xl overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorScheme === "purple"
@@ -343,7 +343,7 @@ export default function DocumentSummary({
               <span className="text-[11px] font-semibold text-indigo-900 uppercase tracking-wider">
                 Consoane
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" style={{ padding: 4 }}>
                 {analysis.consonantFrequency.toFixed(2)}%
               </span>
             </div>
@@ -360,7 +360,7 @@ export default function DocumentSummary({
               <span className="text-[11px] font-semibold text-pink-900 uppercase tracking-wider">
                 Vocale
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700" style={{ padding: 4 }}>
                 {analysis.vowelFrequency.toFixed(2)}%
               </span>
             </div>
@@ -378,6 +378,7 @@ export default function DocumentSummary({
                 Litere absente
               </span>
               <span
+                style={{ padding: 4 }}
                 className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 truncate max-w-[120px]"
                 title={`Alfabet detectat: ${analysis.alphabetName}`}
               >
@@ -412,7 +413,7 @@ export default function DocumentSummary({
           </div>
         </div>
 
-        <div className="space-y-1.5 p-3 rounded-xl bg-gray-50/70 border border-gray-100" style={{ marginTop: 30 }}>
+        <div className="space-y-1.5 p-3 rounded-xl" style={{ marginTop: 30 }}>
           <div className="flex items-center justify-between text-xs text-gray-600 font-medium">
             <span className="flex items-center gap-1.5 text-pink-700">
               <span className="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block" />

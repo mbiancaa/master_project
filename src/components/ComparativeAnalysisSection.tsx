@@ -456,15 +456,7 @@ export default function ComparativeAnalysisSection({
                 : "text-gray-600 hover:text-gray-900"
                 }`}
             >
-              <span>Caractere comune</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterView === "common"
-                  ? "bg-purple-100 text-purple-800"
-                  : "bg-gray-200 text-gray-700"
-                  }`}
-              >
-                {commonRows.length}
-              </span>
+              <span>Caractere comune({commonRows.length})</span>
             </button>
 
             <button
@@ -475,15 +467,7 @@ export default function ComparativeAnalysisSection({
                 : "text-gray-600 hover:text-gray-900"
                 }`}
             >
-              <span>Toate caracterele</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterView === "all"
-                  ? "bg-purple-100 text-purple-800"
-                  : "bg-gray-200 text-gray-700"
-                  }`}
-              >
-                {comparisonRows.length}
-              </span>
+              <span>Toate caracterele({comparisonRows.length})</span>
             </button>
 
             {doc1OnlyRows.length > 0 && (
@@ -495,15 +479,7 @@ export default function ComparativeAnalysisSection({
                   : "text-gray-600 hover:text-gray-900"
                   }`}
               >
-                <span>Doar în {target1?.alphabetName}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterView === "doc1"
-                    ? "bg-purple-100 text-purple-800"
-                    : "bg-gray-200 text-gray-700"
-                    }`}
-                >
-                  {doc1OnlyRows.length}
-                </span>
+                <span>Doar în {target1?.alphabetName} ({doc1OnlyRows.length})</span>
               </button>
             )}
 
@@ -516,15 +492,7 @@ export default function ComparativeAnalysisSection({
                   : "text-gray-600 hover:text-gray-900"
                   }`}
               >
-                <span>Doar în {target2?.alphabetName}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterView === "doc2"
-                    ? "bg-sky-100 text-sky-800"
-                    : "bg-gray-200 text-gray-700"
-                    }`}
-                >
-                  {doc2OnlyRows.length}
-                </span>
+                <span>Doar în {target2?.alphabetName} ({doc2OnlyRows.length})</span>
               </button>
             )}
           </div>
