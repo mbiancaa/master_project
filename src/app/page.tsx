@@ -20,7 +20,7 @@ interface FileInfo {
   file: File;
   name: string;
   size: number;
-  status: "idle" | "valid" | "invalid";
+  status: "idle" | "valid" | "warning" | "invalid";
   letterCount?: number;
   errorMessage?: string;
 }
@@ -29,6 +29,7 @@ interface ValidationReport {
   checked: boolean;
   allValid: boolean;
   invalidFiles: { name: string; count: number; error?: string }[];
+  warningFiles: { name: string; count: number }[];
   validFiles: { name: string; count: number }[];
 }
 
@@ -61,7 +62,6 @@ export default function Home() {
 
   const isFull = files.length >= MAX_FILES;
   const hasFiles = files.length > 0;
-
 
   const addFiles = (incoming: File[]) => {
     setUploadError("");
@@ -116,7 +116,6 @@ export default function Home() {
 
   const handleDragLeave = () => setIsDragOver(false);
 
-
   const handleSubmit = async () => {
     if (!hasFiles || isValidating) return;
 
@@ -131,23 +130,24 @@ export default function Home() {
       const processed = await Promise.all(
         files.map(async (item) => {
           try {
+            // 1. Extract raw text from .txt, .docx, .md, or .pdf
             const rawText = await parseFileText(item.file);
 
+            // 2. Count letters
             const count = countLetters(rawText);
-            const isValid = count >= MIN_LETTERS_REQUIRED;
+            const hasEnoughLetters = count >= MIN_LETTERS_REQUIRED;
 
-            if (isValid) {
-              const analysis = analyzeDocumentText(item.name, item.size, rawText);
-              computedAnalyses.push(analysis);
-            }
+            // Always compute analysis regardless of letter count
+            const analysis = analyzeDocumentText(item.name, item.size, rawText);
+            computedAnalyses.push(analysis);
 
             return {
               ...item,
-              status: (isValid ? "valid" : "invalid") as "valid" | "invalid",
+              status: (hasEnoughLetters ? "valid" : "warning") as "valid" | "warning",
               letterCount: count,
-              errorMessage: isValid
+              errorMessage: hasEnoughLetters
                 ? undefined
-                : `Are doar ${count.toLocaleString("ro-RO")} litere (minim necesar: ${MIN_LETTERS_REQUIRED.toLocaleString("ro-RO")})`,
+                : `Atenție: are ${count.toLocaleString("ro-RO")} litere (sub pragul recomandat de 50.000)`,
             };
           } catch (err: any) {
             return {
@@ -170,6 +170,13 @@ export default function Home() {
           error: f.errorMessage,
         }));
 
+      const warningList = processed
+        .filter((f) => f.status === "warning")
+        .map((f) => ({
+          name: f.name,
+          count: f.letterCount ?? 0,
+        }));
+
       const validList = processed
         .filter((f) => f.status === "valid")
         .map((f) => ({
@@ -177,43 +184,48 @@ export default function Home() {
           count: f.letterCount ?? 0,
         }));
 
-      const allValid = invalidList.length === 0;
+      const canProceed = computedAnalyses.length > 0;
 
       setReport({
         checked: true,
-        allValid,
+        allValid: canProceed,
         invalidFiles: invalidList,
+        warningFiles: warningList,
         validFiles: validList,
       });
 
-      if (allValid) {
+      if (canProceed) {
         setAnalyses(computedAnalyses);
       }
     } catch {
-      setUploadError("A apărut o eroare neașteptată la validarea fișierelor.");
+      setUploadError("A apărut o eroare neașteptată la procesarea fișierelor.");
     } finally {
       setIsValidating(false);
     }
   };
 
-
   return (
     <main className="gradient-bg flex flex-col items-center min-h-screen px-4 py-10 sm:px-6">
-      <div className="relative z-10 flex flex-col items-center gap-6 w-full" style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 60, paddingBottom: 60 }}>
+      <div
+        className="relative z-10 flex flex-col items-center gap-6 w-full"
+        style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 60, paddingBottom: 60 }}
+      >
         <div className="text-center space-y-2 px-2 max-w-2xl">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 leading-tight">
             Analizează documente textuale
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 select-none">
-            Maxim {MAX_FILES} fișiere de tip .txt, .docx, .md sau .pdf
+            Maxim {MAX_FILES} fișiere de tip .txt, .docx, .md sau .pdf (recomandat minim 50.000 litere)
           </p>
         </div>
 
-        <div className="upload-card w-full max-w-xl overflow-hidden max-w-7xl">
+        {/* Upload Card */}
+        <div className="upload-card w-full max-w-xl overflow-hidden">
           {files.length > 0 && (
             <div className="docs-uploaded flex flex-wrap items-center gap-2 flex-1 min-w-0">
               {files.map((f) => {
                 const isInvalid = f.status === "invalid";
+                const isWarning = f.status === "warning";
                 const isValid = f.status === "valid";
 
                 return (
@@ -221,9 +233,11 @@ export default function Home() {
                     key={f.id}
                     className={`file-chip ${isInvalid
                       ? "file-chip-invalid"
-                      : isValid
-                        ? "file-chip-valid"
-                        : ""
+                      : isWarning
+                        ? "file-chip-warning"
+                        : isValid
+                          ? "file-chip-valid"
+                          : ""
                       }`}
                   >
                     {isInvalid ? (
@@ -239,6 +253,21 @@ export default function Home() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+                        />
+                      </svg>
+                    ) : isWarning ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
                         />
                       </svg>
                     ) : isValid ? (
@@ -276,9 +305,11 @@ export default function Home() {
                     <span
                       className={`text-xs leading-none ${isInvalid
                         ? "text-red-700 font-medium"
-                        : isValid
-                          ? "text-green-700 font-medium"
-                          : "text-gray-600"
+                        : isWarning
+                          ? "text-amber-800 font-medium"
+                          : isValid
+                            ? "text-green-700 font-medium"
+                            : "text-gray-600"
                         }`}
                       title={`${f.name} · ${formatSize(f.size)}${f.letterCount !== undefined
                         ? ` · ${f.letterCount.toLocaleString("ro-RO")} litere`
@@ -290,7 +321,11 @@ export default function Home() {
 
                     {f.letterCount !== undefined && (
                       <span
-                        className={`chip-badge ${isInvalid ? "chip-badge-invalid" : "chip-badge-valid"
+                        className={`chip-badge ${isInvalid
+                          ? "chip-badge-invalid"
+                          : isWarning
+                            ? "chip-badge-warning"
+                            : "chip-badge-valid"
                           }`}
                       >
                         {f.letterCount.toLocaleString("ro-RO")}
@@ -354,33 +389,28 @@ export default function Home() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span>Se analizează și validează conținutul fișierelor...</span>
+                <span>Se analizează conținutul fișierelor...</span>
               </div>
             ) : report?.checked ? (
-              report.allValid ? (
-                <div className="status-ok text-sm sm:text-base text-center space-y-1 py-1">
-                  <p className="font-semibold text-green-500">
-                    Conținutul fișierelor este valid.
-                  </p>
-                </div>
-              ) : (
+              report.invalidFiles.length > 0 ? (
                 <div className="status-err text-xs sm:text-sm text-center space-y-1.5 py-1">
-                  <p className="font-semibold text-red-600">
-                    ⚠️ Următoarele fișiere nu sunt conforme (sub 50.000 de
-                    litere):
+                  <p className="font-semibold text-sm text-red-600">
+                    ⚠️ Următoarele fișiere nu au putut fi procesate:
                   </p>
                   <div className="space-y-0.5 text-xs text-red-500">
                     {report.invalidFiles.map((inv) => (
                       <p key={inv.name}>
-                        <span className="font-medium text-red-700">
-                          {inv.name}
-                        </span>
-                        :{" "}
-                        {inv.error ||
-                          `${inv.count.toLocaleString("ro-RO")} litere (necesar minim 50.000)`}
+                        <span className="font-medium text-red-700">{inv.name}</span>:{" "}
+                        {inv.error}
                       </p>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="status-ok text-sm sm:text-base text-center space-y-1 py-1">
+                  <p className="font-semibold text-sm text-green-600">
+                    ✓ Conținutul fișierelor a fost procesat cu succes.
+                  </p>
                 </div>
               )
             ) : uploadError ? (
@@ -426,11 +456,7 @@ export default function Home() {
               stroke="currentColor"
               strokeWidth={2.5}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
           </button>
 
@@ -440,12 +466,12 @@ export default function Home() {
             onClick={handleSubmit}
             title={
               isValidating
-                ? "Se validează..."
+                ? "Se procesează..."
                 : hasFiles
-                  ? "Validează fișierele și generează sumarul"
+                  ? "Analizează fișierele"
                   : "Adaugă cel puțin un fișier"
             }
-            aria-label="Validează fișierele"
+            aria-label="Analizează fișierele"
           >
             {isValidating ? (
               <svg
@@ -487,12 +513,11 @@ export default function Home() {
           </button>
         </div>
 
-        {report?.allValid && analyses.length > 0 && (
+        {/* ── Summaries Section ── */}
+        {analyses.length > 0 && (
           <section className="w-full mt-4 mb-10 space-y-6" style={{ marginTop: 0 }}>
             <div
-              className={`grid grid-cols-1 ${analyses.length > 1
-                ? "lg:grid-cols-2"
-                : "mx-auto"
+              className={`grid grid-cols-1 ${analyses.length > 1 ? "lg:grid-cols-2" : "mx-auto"
                 } gap-6 sm:gap-8 items-start`}
               style={{ marginTop: 60 }}
             >
@@ -507,7 +532,8 @@ export default function Home() {
           </section>
         )}
 
-        {report?.allValid && analyses.length >= 2 && (
+        {/* ── Comparative Section (only when 2 documents analyzed) ── */}
+        {analyses.length >= 2 && (
           <ComparativeAnalysisSection analyses={analyses} />
         )}
       </div>

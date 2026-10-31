@@ -200,6 +200,13 @@ body {
   box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
 }
 
+/* Warning chip state (< 50.000 letters) */
+.file-chip.file-chip-warning {
+  background: rgba(254, 243, 199, 0.95);
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+
 .chip-badge {
   font-size: 0.65rem;
   font-weight: 600;
@@ -211,6 +218,11 @@ body {
 .chip-badge-invalid {
   background: rgba(239, 68, 68, 0.15);
   color: #dc2626;
+}
+
+.chip-badge-warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
 }
 
 .chip-badge-valid {
@@ -294,4 +306,9 @@ table th {
 
 table td {
   padding: 10px 4px;
+}
+
+.warning-summary {
+  padding: 3px 6px;
+  max-width: fit-content;
 }
