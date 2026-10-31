@@ -242,35 +242,8 @@ export default function DocumentSummary({
 
   return (
     <div className="summary-card flex flex-col gap-6 p-6 sm:p-7 rounded-2xl bg-white/90 backdrop-blur-xl border border-white/70 shadow-xl overflow-hidden">
-      {analysis.totalLetters < 50000 ? (
-        <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-amber-800 font-medium bg-amber-50/90 border border-amber-200 rounded-lg px-2.5 py-1">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-4 h-4 text-amber-600 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
-            />
-          </svg>
-          <span>
-            Atenție: fișierul are mai puține litere decât pragul recomandat de 50.000.
-          </span>
-        </div>
-      ) : (
-        <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-green-800 font-medium bg-green-50/90 border border-green-200 rounded-lg px-2.5 py-1">
-          <span>
-            Fișierul este conform pragului recomandat de 50.000.
-          </span>
-        </div>
-      )}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-gray-100">
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorScheme === "purple"
               ? "bg-purple-100 text-purple-600"
@@ -304,17 +277,34 @@ export default function DocumentSummary({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-3">
-        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
-          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
-            Denumire fișier
-          </span>
-          <span
-            className="font-bold text-sm text-gray-900 block mt-0.5"
-            title={analysis.fileName}
-          >
-            {analysis.fileName}
-          </span>
-        </div>
+
+        {analysis.totalLetters < 50000 ? (
+          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-amber-800 font-medium bg-amber-50/90 border border-amber-200 rounded-lg px-2.5 py-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4 text-amber-600 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+              />
+            </svg>
+            <span>
+              Atenție: fișierul are mai puține litere decât pragul recomandat de 50.000.
+            </span>
+          </div>
+        ) : (
+          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-green-800 font-medium bg-green-50/90 border border-green-200 rounded-lg px-2.5 py-1">
+            <span>
+              Fișierul este conform pragului recomandat de 50.000.
+            </span>
+          </div>
+        )}
 
         <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
           <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">

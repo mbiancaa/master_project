@@ -99,6 +99,15 @@ export default function Home() {
     setAnalyses([]);
   };
 
+  const handleReset = () => {
+    setFiles([]);
+    setUploadError("");
+    setReport(null);
+    setAnalyses([]);
+    setIsValidating(false);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) addFiles(Array.from(e.target.files));
   };
@@ -461,17 +470,21 @@ export default function Home() {
           </button>
 
           <button
-            className="btn-arrow flex-shrink-0"
-            disabled={!hasFiles || isValidating}
-            onClick={handleSubmit}
+            className={`btn-arrow flex-shrink-0 ${analyses.length > 0 ? "btn-reset" : ""}`}
+            disabled={analyses.length > 0 ? false : (!hasFiles || isValidating)}
+            onClick={analyses.length > 0 ? handleReset : handleSubmit}
             title={
               isValidating
                 ? "Se procesează..."
-                : hasFiles
-                  ? "Analizează fișierele"
-                  : "Adaugă cel puțin un fișier"
+                : analyses.length > 0
+                  ? "Resetează analiza și elimină fișierele"
+                  : hasFiles
+                    ? "Analizează fișierele"
+                    : "Adaugă cel puțin un fișier"
             }
-            aria-label="Analizează fișierele"
+            aria-label={
+              analyses.length > 0 ? "Resetează analiza" : "Analizează fișierele"
+            }
           >
             {isValidating ? (
               <svg
@@ -492,6 +505,21 @@ export default function Home() {
                   className="opacity-75"
                   fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : analyses.length > 0 ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
                 />
               </svg>
             ) : (

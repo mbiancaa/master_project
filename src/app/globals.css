@@ -167,6 +167,18 @@ body {
   cursor: not-allowed;
 }
 
+.btn-reset {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+}
+
+.btn-reset svg {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-reset:hover:not(:disabled) svg {
+  transform: rotate(-180deg);
+}
+
 /* ── File chip (in action bar) ────────────────────────────────── */
 .file-chip {
   display: inline-flex;
