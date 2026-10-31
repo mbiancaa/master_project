@@ -158,6 +158,7 @@ export default function Home() {
                 ? undefined
                 : `Atenție: are ${count.toLocaleString("ro-RO")} litere (sub pragul recomandat de 50.000)`,
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (err: any) {
             return {
               ...item,

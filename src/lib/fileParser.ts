@@ -305,6 +305,7 @@ export async function parseFileText(file: File): Promise<string> {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const pageText = content.items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((item: any) => ("str" in item ? item.str : ""))
         .join(" ");
       fullText += pageText + " ";
