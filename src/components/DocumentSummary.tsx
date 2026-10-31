@@ -10,12 +10,6 @@ interface DocumentSummaryProps {
   colorScheme?: "purple" | "blue";
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export default function DocumentSummary({
   analysis,
   colorScheme = "purple",
@@ -317,7 +311,7 @@ export default function DocumentSummary({
 
         <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
           <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
-            Număr total de litere
+            Total litere din alfabet ({analysis.alphabetName})
           </span>
           <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
             {analysis.totalLetters.toLocaleString("ro-RO")}
@@ -328,12 +322,15 @@ export default function DocumentSummary({
           <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
             Total caractere distincte
           </span>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
             <span className="font-extrabold text-base sm:text-lg text-purple-700">
               {analysis.totalDistinctChars}
             </span>
-            <span className="text-xs text-gray-500">
-              ({analysis.totalDistinctLetters} litere cf. regex)
+            <span
+              className="text-xs text-gray-500 font-medium"
+              title={`Alfabetul ${analysis.alphabetName} conține ${analysis.alphabetTotalLetters} litere conform regex`}
+            >
+              ({analysis.alphabetTotalLetters} litere cf. regex-ul alfabetului)
             </span>
           </div>
         </div>
@@ -619,12 +616,6 @@ export default function DocumentSummary({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {displayedItems.map((item, idx) => {
-                const maxPct =
-                  displayedItems[0]?.relativeFrequency || 1;
-                const barWidth = Math.min(
-                  100,
-                  Math.max(4, (item.relativeFrequency / maxPct) * 100)
-                );
                 const safeTotal =
                   analysis.totalLetters > 0 ? analysis.totalLetters : 1;
                 const fChar = item.count / safeTotal;

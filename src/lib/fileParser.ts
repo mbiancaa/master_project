@@ -1,21 +1,17 @@
-// Helper to extract text and compute character frequency analysis
+import {
+  detectLanguage,
+  RO_ALPHABET,
+  EN_ALPHABET,
+  LanguageProfile,
+} from "./languageDetector";
 
 export const MIN_LETTERS_REQUIRED = 50000;
 
-// Romanian and English letters regex
-// Standard diacritics (ă, â, î, ș, ț) and legacy cedilla variants (ş, ţ)
-export const LETTERS_REGEX = /[a-zăâîșțşţ]/g;
-export const SINGLE_LETTER_REGEX = /^[a-zăâîșțşţ]$/;
+// Universal Unicode letter matching (Latin, Cyrillic, Greek, etc.)
+export const LETTERS_REGEX = /\p{L}/gu;
+export const SINGLE_LETTER_REGEX = /^\p{L}$/u;
 
-// Vowels in Romanian and English
-export const VOWELS_SET = new Set(["a", "ă", "â", "e", "i", "î", "o", "u"]);
-export const ROMANIAN_SPECIAL_SET = new Set(["ă", "â", "î", "ș", "ț", "ş", "ţ"]);
-
-export const EN_ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
-export const RO_ALPHABET = [
-  "a", "ă", "â", "b", "c", "d", "e", "f", "g", "h", "i", "î", "j", "k", "l",
-  "m", "n", "o", "p", "q", "r", "s", "ș", "t", "ț", "u", "v", "w", "x", "y", "z",
-];
+export { RO_ALPHABET, EN_ALPHABET };
 
 export interface CharacterFrequency {
   char: string;
@@ -42,8 +38,8 @@ export interface DocumentAnalysis {
   vowelFrequency: number; // percentage related to totalLetters
 
   // 3. Characters not appearing from the alphabet
-  alphabetType: "romanian" | "english";
-  alphabetName: string;
+  alphabetType: string; // e.g. "ro", "en", "de", "fr", "it", "nl", "ru", "es"
+  alphabetName: string; // e.g. "Lb. română", "Lb. germană", "Lb. rusă (Chirilic)"
   alphabetTotalLetters: number;
   missingLettersCount: number;
   missingLetters: string[];
@@ -58,7 +54,17 @@ export interface DocumentAnalysis {
 
 export function countLetters(text: string): number {
   const lower = text.toLowerCase();
-  const matches = lower.match(LETTERS_REGEX);
+  const noWhitespace = lower.replace(/\s+/g, "");
+  const charMap = new Map<string, number>();
+  let unicodeLetters = 0;
+  for (const ch of noWhitespace) {
+    charMap.set(ch, (charMap.get(ch) || 0) + 1);
+    if (/^\p{L}$/u.test(ch)) {
+      unicodeLetters++;
+    }
+  }
+  const detectedLang = detectLanguage(charMap, unicodeLetters);
+  const matches = lower.match(detectedLang.letterRegex);
   return matches ? matches.length : 0;
 }
 
@@ -74,21 +80,32 @@ export function analyzeDocumentText(
   const noWhitespace = lower.replace(/\s+/g, "");
   const totalCharsNoSpaces = noWhitespace.length;
 
-  // Count every distinct character
+  // Count every distinct character and total Unicode letters
   const charMap = new Map<string, number>();
+  let unicodeLetters = 0;
   for (const ch of noWhitespace) {
     charMap.set(ch, (charMap.get(ch) || 0) + 1);
+    if (/^\p{L}$/u.test(ch)) {
+      unicodeLetters++;
+    }
   }
 
-  // Count total regex letters, vowels, and consonants
+  // 1. Dynamically detect language and alphabet
+  const detectedLang: LanguageProfile = detectLanguage(charMap, unicodeLetters);
+  const alphabetType = detectedLang.code;
+  const alphabetName = detectedLang.name;
+  const targetAlphabet = detectedLang.alphabet;
+  const alphabetTotalLetters = detectedLang.alphabetLength;
+
+  // 2. Count total letters, vowels, and consonants strictly conforming to detected language's regex
   let totalLetters = 0;
   let totalVowels = 0;
   let totalConsonants = 0;
 
   for (const [ch, count] of charMap.entries()) {
-    if (SINGLE_LETTER_REGEX.test(ch)) {
+    if (detectedLang.singleLetterRegex.test(ch)) {
       totalLetters += count;
-      if (VOWELS_SET.has(ch)) {
+      if (detectedLang.vowels.has(ch)) {
         totalVowels += count;
       } else {
         totalConsonants += count;
@@ -102,28 +119,90 @@ export function analyzeDocumentText(
   const vowelFrequency = (totalVowels / safeTotalLetters) * 100;
   const consonantFrequency = (totalConsonants / safeTotalLetters) * 100;
 
-  // Check if text has any Romanian-specific characters
-  const hasRomanianSpecial = Array.from(charMap.keys()).some((ch) =>
-    ROMANIAN_SPECIAL_SET.has(ch)
-  );
-
-  const alphabetType = hasRomanianSpecial
-    ? ("romanian" as const)
-    : ("english" as const);
-  const alphabetName = hasRomanianSpecial
-    ? "Lb. română"
-    : "Lb. engleză";
-  const targetAlphabet = hasRomanianSpecial ? RO_ALPHABET : EN_ALPHABET;
-  const alphabetTotalLetters = targetAlphabet.length;
-
-  // Check which characters from the target alphabet do NOT appear
+  // 3. Check which characters from the target alphabet do NOT appear
   const missingLetters: string[] = [];
   for (const letter of targetAlphabet) {
     let presentCount = charMap.get(letter) || 0;
-    if (letter === "ș") {
-      presentCount += charMap.get("ş") || 0;
-    } else if (letter === "ț") {
-      presentCount += charMap.get("ţ") || 0;
+    if (detectedLang.code === "ro") {
+      if (letter === "ș") {
+        presentCount += charMap.get("ş") || 0;
+      } else if (letter === "ț") {
+        presentCount += charMap.get("ţ") || 0;
+      }
+    } else if (detectedLang.code === "el") {
+      if (letter === "σ") {
+        presentCount += charMap.get("ς") || 0;
+      } else if (letter === "α") {
+        presentCount += charMap.get("ά") || 0;
+      } else if (letter === "ε") {
+        presentCount += charMap.get("έ") || 0;
+      } else if (letter === "η") {
+        presentCount += charMap.get("ή") || 0;
+      } else if (letter === "ι") {
+        presentCount +=
+          (charMap.get("ί") || 0) +
+          (charMap.get("ϊ") || 0) +
+          (charMap.get("ΐ") || 0);
+      } else if (letter === "ο") {
+        presentCount += charMap.get("ό") || 0;
+      } else if (letter === "υ") {
+        presentCount +=
+          (charMap.get("ύ") || 0) +
+          (charMap.get("ϋ") || 0) +
+          (charMap.get("ΰ") || 0);
+      } else if (letter === "ω") {
+        presentCount += charMap.get("ώ") || 0;
+      }
+    } else if (detectedLang.code === "it") {
+      if (letter === "a") {
+        presentCount += charMap.get("à") || 0;
+      } else if (letter === "e") {
+        presentCount += (charMap.get("è") || 0) + (charMap.get("é") || 0);
+      } else if (letter === "i") {
+        presentCount +=
+          (charMap.get("ì") || 0) +
+          (charMap.get("í") || 0) +
+          (charMap.get("î") || 0);
+      } else if (letter === "o") {
+        presentCount += (charMap.get("ò") || 0) + (charMap.get("ó") || 0);
+      } else if (letter === "u") {
+        presentCount += (charMap.get("ù") || 0) + (charMap.get("ú") || 0);
+      }
+    } else if (detectedLang.code === "sv") {
+      if (letter === "e") {
+        presentCount += charMap.get("é") || 0;
+      }
+    } else if (detectedLang.code === "he") {
+      if (letter === "כ") {
+        presentCount += charMap.get("ך") || 0;
+      } else if (letter === "מ") {
+        presentCount += charMap.get("ם") || 0;
+      } else if (letter === "נ") {
+        presentCount += charMap.get("ן") || 0;
+      } else if (letter === "פ") {
+        presentCount += charMap.get("ף") || 0;
+      } else if (letter === "צ") {
+        presentCount += charMap.get("ץ") || 0;
+      }
+    } else if (detectedLang.code === "ar") {
+      if (letter === "ا") {
+        presentCount +=
+          (charMap.get("أ") || 0) +
+          (charMap.get("إ") || 0) +
+          (charMap.get("آ") || 0) +
+          (charMap.get("ى") || 0) +
+          (charMap.get("ٱ") || 0);
+      } else if (letter === "ه") {
+        presentCount += charMap.get("ة") || 0;
+      } else if (letter === "و") {
+        presentCount += charMap.get("ؤ") || 0;
+      } else if (letter === "ي") {
+        presentCount += charMap.get("ئ") || 0;
+      }
+    } else if (detectedLang.code === "tr") {
+      if (letter === "i") {
+        presentCount += charMap.get("İ") || 0;
+      }
     }
 
     if (presentCount === 0) {
@@ -133,13 +212,13 @@ export function analyzeDocumentText(
 
   const missingLettersCount = missingLetters.length;
 
-  // Build full frequency list
+  // 4. Build frequency lists (filtering letters strictly conforming to detectedLang.singleLetterRegex)
   const allCharFrequencies: CharacterFrequency[] = [];
   const letterFrequencies: CharacterFrequency[] = [];
 
   for (const [ch, count] of charMap.entries()) {
-    const isLetter = SINGLE_LETTER_REGEX.test(ch);
-    const isVowel = isLetter ? VOWELS_SET.has(ch) : false;
+    const isLetter = detectedLang.singleLetterRegex.test(ch);
+    const isVowel = isLetter ? detectedLang.vowels.has(ch) : false;
     const relativeFrequency = (count / safeTotalLetters) * 100;
 
     const item: CharacterFrequency = {
@@ -155,6 +234,10 @@ export function analyzeDocumentText(
       letterFrequencies.push(item);
     }
   }
+
+  // Sort frequencies descending
+  letterFrequencies.sort((a, b) => b.count - a.count);
+  allCharFrequencies.sort((a, b) => b.count - a.count);
 
   const mostFrequentLetter =
     letterFrequencies.length > 0 ? letterFrequencies[0] : null;

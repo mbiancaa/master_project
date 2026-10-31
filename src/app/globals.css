@@ -188,7 +188,7 @@ body {
   background: rgba(139, 92, 246, 0.08);
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 8px;
-  max-width: 240px;
+  max-width: 280px;
   transition: all 0.2s ease;
 }
 
