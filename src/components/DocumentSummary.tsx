@@ -343,7 +343,7 @@ export default function DocumentSummary({
               <span className="text-[11px] font-semibold text-indigo-900 uppercase tracking-wider">
                 Consoane
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" style={{ padding: 4 }}>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700" style={{ padding: 4 }}>
                 {analysis.consonantFrequency.toFixed(2)}%
               </span>
             </div>
@@ -360,7 +360,7 @@ export default function DocumentSummary({
               <span className="text-[11px] font-semibold text-pink-900 uppercase tracking-wider">
                 Vocale
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700" style={{ padding: 4 }}>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-pink-100 text-pink-700" style={{ padding: 4 }}>
                 {analysis.vowelFrequency.toFixed(2)}%
               </span>
             </div>

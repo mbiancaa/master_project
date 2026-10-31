@@ -456,7 +456,7 @@ export default function ComparativeAnalysisSection({
                 : "text-gray-600 hover:text-gray-900"
                 }`}
             >
-              <span>Caractere comune({commonRows.length})</span>
+              <span>Caractere comune ({commonRows.length})</span>
             </button>
 
             <button
@@ -467,7 +467,7 @@ export default function ComparativeAnalysisSection({
                 : "text-gray-600 hover:text-gray-900"
                 }`}
             >
-              <span>Toate caracterele({comparisonRows.length})</span>
+              <span>Toate caracterele ({comparisonRows.length})</span>
             </button>
 
             {doc1OnlyRows.length > 0 && (
