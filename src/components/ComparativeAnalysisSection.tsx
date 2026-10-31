@@ -438,7 +438,7 @@ export default function ComparativeAnalysisSection({
   return (
     <section className="w-full mt-10 mb-16 space-y-6">
       <div className="summary-card p-6 sm:p-8 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl space-y-6">
-        <div className="border-b border-gray-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-extrabold text-lg sm:text-xl text-gray-900 flex items-center gap-2" style={{ marginBottom: 40 }}>
               Frecvențele comparative ale documentelor
@@ -446,8 +446,8 @@ export default function ComparativeAnalysisSection({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-          <div className="inline-flex rounded-xl p-1 bg-gray-100 text-xs font-medium flex-wrap gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2" style={{ marginBottom: 20 }}>
+          <div className="inline-flex rounded-lg p-1 bg-gray-100 text-xs font-medium flex-wrap gap-1">
             <button
               style={{ padding: '4px 6px' }}
               onClick={() => setSelectedFilterView("common")}
