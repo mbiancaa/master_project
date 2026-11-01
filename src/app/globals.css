@@ -42,12 +42,12 @@ body {
 .gradient-bg {
   min-height: 100vh;
   background: linear-gradient(135deg,
-      #a8c8ff 0%,
-      #c4a8ff 20%,
-      #e8a8e8 40%,
-      #ff9bd2 60%,
-      #c4a8ff 80%,
-      #a8c8ff 100%);
+      #a8c8ff30 0%,
+      #c4a8ff30 20%,
+      #e8a8e830 40%,
+      #ff9bd230 60%,
+      #c4a8ff30 80%,
+      #a8c8ff30 100%);
   background-size: 300% 300%;
   animation: gradientShift 10s ease infinite;
   position: relative;
