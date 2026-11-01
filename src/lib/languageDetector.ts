@@ -1,10 +1,10 @@
-// Language and alphabet detection module (Native statistical + heuristic engine)
-
 export interface LanguageProfile {
   code: string;
   name: string;
   alphabet: string[];
   alphabetLength: number;
+  specificChars: string;
+  description: string;
   letterRegex: RegExp;
   singleLetterRegex: RegExp;
   vowels: Set<string>;
@@ -214,6 +214,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. română",
     alphabet: RO_ALPHABET,
     alphabetLength: 31,
+    specificChars: "ă, â, î, ș, ț",
+    description: "Alfabetul latin standard completat cu 5 litere cu semne diacritice.",
     letterRegex: /[a-zăâîșțşţ]/gi,
     singleLetterRegex: /^[a-zăâîșțşţ]$/i,
     vowels: RO_VOWELS,
@@ -225,6 +227,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. engleză",
     alphabet: EN_ALPHABET,
     alphabetLength: 26,
+    specificChars: "a – z",
+    description: "Alfabetul latin modern clasic de 26 de litere, fără diacritice.",
     letterRegex: /[a-z]/gi,
     singleLetterRegex: /^[a-z]$/i,
     vowels: EN_VOWELS,
@@ -236,6 +240,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. germană",
     alphabet: DE_ALPHABET,
     alphabetLength: 30,
+    specificChars: "ä, ö, ü, ß",
+    description: "Literele de bază a–z, la care se adaugă cele 3 Umlaut-uri și ligatura Eszett.",
     letterRegex: /[a-zäöüß]/gi,
     singleLetterRegex: /^[a-zäöüß]$/i,
     vowels: DE_VOWELS,
@@ -247,6 +253,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. franceză",
     alphabet: FR_ALPHABET,
     alphabetLength: 42,
+    specificChars: "à, â, ç, é, è, ê, ë, î, ï, ô, ù, û, ü, ÿ, œ, æ",
+    description: "26 de litere standard, 14 litere cu accente și 2 ligaturi (œ, æ).",
     letterRegex: /[a-zàâçéèêëîïôùûüÿœæ]/gi,
     singleLetterRegex: /^[a-zàâçéèêëîïôùûüÿœæ]$/i,
     vowels: FR_VOWELS,
@@ -258,6 +266,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. italiană",
     alphabet: IT_ALPHABET,
     alphabetLength: 26,
+    specificChars: "a – z (21 de bază + j, k, w, x, y)",
+    description: "21 de litere tradiționale italiene + 5 litere pentru neologisme și împrumuturi.",
     letterRegex: /[a-zàèéìíîòóùú]/gi,
     singleLetterRegex: /^[a-zàèéìíîòóùú]$/i,
     vowels: IT_VOWELS,
@@ -269,6 +279,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. olandeză",
     alphabet: NL_ALPHABET,
     alphabetLength: 26,
+    specificChars: "a – z, ĳ",
+    description: "Alfabetul latin clasic, recunoaștere pentru digraful olandez ij și vocale cu tremă.",
     letterRegex: /[a-z]/gi,
     singleLetterRegex: /^[a-z]$/i,
     vowels: NL_VOWELS,
@@ -280,6 +292,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. rusă (Chirilic)",
     alphabet: RU_ALPHABET,
     alphabetLength: 33,
+    specificChars: "а, б, в, г ... э, ю, я",
+    description: "33 de litere chirilice, incluzând litera ё, semnul tare (ъ) și semnul moale (ь).",
     letterRegex: /[а-яё]/gi,
     singleLetterRegex: /^[а-яё]$/i,
     vowels: RU_VOWELS,
@@ -291,6 +305,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. greacă",
     alphabet: EL_ALPHABET,
     alphabetLength: 24,
+    specificChars: "α, β, γ, δ ... ψ, ω, ς",
+    description: "24 de litere de la Alfa (α) la Omega (ω), sigma final (ς) și accente tonos.",
     letterRegex: /[α-ωάέήίόύώϊϋΐΰς]/gi,
     singleLetterRegex: /^[α-ωάέήίόύώϊϋΐΰς]$/i,
     vowels: EL_VOWELS,
@@ -302,6 +318,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. spaniolă",
     alphabet: ES_ALPHABET,
     alphabetLength: 27,
+    specificChars: "ñ, á, é, í, ó, ú",
+    description: "Alfabetul latin completat cu litera distinctă eñe (ñ) și vocalele cu accent ascuțit.",
     letterRegex: /[a-zñáéíóúü]/gi,
     singleLetterRegex: /^[a-zñáéíóúü]$/i,
     vowels: ES_VOWELS,
@@ -313,6 +331,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. suedeză",
     alphabet: SV_ALPHABET,
     alphabetLength: 29,
+    specificChars: "å, ä, ö",
+    description: "Alfabetul latin standard urmat de cele 3 litere scandinave specifice la final.",
     letterRegex: /[a-zåäöé]/gi,
     singleLetterRegex: /^[a-zåäöé]$/i,
     vowels: SV_VOWELS,
@@ -324,6 +344,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. poloneză",
     alphabet: PL_ALPHABET,
     alphabetLength: 32,
+    specificChars: "ą, ć, ę, ł, ń, ó, ś, ź, ż",
+    description: "32 de litere (fără q, v, x în alfabetul standard), cu 9 litere specifice poloneze.",
     letterRegex: /[a-ząćęłńóśźż]/gi,
     singleLetterRegex: /^[a-ząćęłńóśźż]$/i,
     vowels: PL_VOWELS,
@@ -335,6 +357,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. turcă",
     alphabet: TR_ALPHABET,
     alphabetLength: 29,
+    specificChars: "ç, ğ, ı, ö, ş, ü, İ",
+    description: "29 de litere (fără q, w, x), conținând litere specifice și distincția strictă ı vs i.",
     letterRegex: /[a-zçğışöüİ]/gi,
     singleLetterRegex: /^[a-zçğışöüİ]$/i,
     vowels: TR_VOWELS,
@@ -346,6 +370,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. ebraică",
     alphabet: HE_ALPHABET,
     alphabetLength: 22,
+    specificChars: "א, ב, ג, ד ... ש, ת (+ ך, ם, ן, ף, ץ)",
+    description: "22 de litere consonatice de la Alef (א) la Tav (ת), agregând cele 5 forme finale (sofit).",
     letterRegex: /[\p{Script=Hebrew}]/gu,
     singleLetterRegex: /^[\p{Script=Hebrew}]$/u,
     vowels: HE_VOWELS,
@@ -357,6 +383,8 @@ export const SUPPORTED_LANGUAGES: LanguageProfile[] = [
     name: "Lb. arabă",
     alphabet: AR_ALPHABET,
     alphabetLength: 28,
+    specificChars: "ا, ب, ت, ث ... و, ي (+ أ, إ, آ, ة, ى, ئ, ؤ)",
+    description: "28 de litere de bază de la Alif (ا) la Ya (ي), cu maparea formelor Hamza și Ta Marbuta.",
     letterRegex: /[\p{Script=Arabic}]/gu,
     singleLetterRegex: /^[\p{Script=Arabic}]$/u,
     vowels: AR_VOWELS,

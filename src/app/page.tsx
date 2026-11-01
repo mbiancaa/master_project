@@ -10,6 +10,7 @@ import {
 } from "@/lib/fileParser";
 import DocumentSummary from "@/components/DocumentSummary";
 import ComparativeAnalysisSection from "@/components/ComparativeAnalysisSection";
+import SupportedLanguagesModal from "@/components/SupportedLanguagesModal";
 
 const MAX_FILES = 2;
 
@@ -58,6 +59,7 @@ export default function Home() {
   const [isValidating, setIsValidating] = useState(false);
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [analyses, setAnalyses] = useState<DocumentAnalysis[]>([]);
+  const [isLanguagesModalOpen, setIsLanguagesModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isFull = files.length >= MAX_FILES;
@@ -215,7 +217,37 @@ export default function Home() {
   };
 
   return (
-    <main className="gradient-bg flex flex-col items-center min-h-screen px-4 py-10 sm:px-6">
+    <main className="gradient-bg relative flex flex-col items-center min-h-screen px-4 py-10 sm:px-6">
+      {/* Absolute top-right info icon */}
+      <button
+        type="button"
+        onClick={() => setIsLanguagesModalOpen(true)}
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30 group flex items-center justify-center w-10 h-10 rounded-full bg-white/90 hover:bg-white text-purple-700 hover:text-purple-900 shadow-md hover:shadow-lg border border-purple-100 backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95"
+        title="Vezi limbile pe care le poate detecta platforma"
+        aria-label="Informații limbi detectabile"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-5 h-5 transition-transform group-hover:rotate-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+          />
+        </svg>
+      </button>
+
+      {/* Popup modal for detectable languages */}
+      <SupportedLanguagesModal
+        isOpen={isLanguagesModalOpen}
+        onClose={() => setIsLanguagesModalOpen(false)}
+      />
+
       <div
         className="relative z-10 flex flex-col items-center gap-6 w-full"
         style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 60, paddingBottom: 60 }}
