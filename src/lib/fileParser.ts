@@ -273,19 +273,27 @@ export async function parseFileText(file: File): Promise<string> {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
 
   if (ext === ".txt" || ext === ".md") {
-    return new Promise((resolve, reject) => {
+    const text = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve((reader.result as string) || "");
       reader.onerror = () => reject(new Error("Eroare la citirea fișierului text"));
       reader.readAsText(file);
     });
+    if (text.trim().length === 0) {
+      throw new Error("Fișierul text este gol.");
+    }
+    return text;
   }
 
   if (ext === ".docx") {
     const arrayBuffer = await file.arrayBuffer();
     const mammoth = await import("mammoth");
     const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value || "";
+    const text = result.value || "";
+    if (text.trim().length === 0) {
+      throw new Error("Fișierul .docx nu conține text.");
+    }
+    return text;
   }
 
   if (ext === ".pdf") {
@@ -309,6 +317,13 @@ export async function parseFileText(file: File): Promise<string> {
         .map((item: any) => ("str" in item ? item.str : ""))
         .join(" ");
       fullText += pageText + " ";
+    }
+
+    const trimmed = fullText.trim();
+    if (pdf.numPages > 0 && trimmed.length === 0) {
+      throw new Error(
+        "Documentul este un PDF scanat (doar imagine, fără strat de text digital). Pentru a fi analizat, folosiți un fișier cu text selectabil sau procesat prin OCR."
+      );
     }
 
     return fullText;
