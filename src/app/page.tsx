@@ -12,7 +12,7 @@ import DocumentSummary from "@/components/DocumentSummary";
 import ComparativeAnalysisSection from "@/components/ComparativeAnalysisSection";
 import SupportedLanguagesModal from "@/components/SupportedLanguagesModal";
 
-const MAX_FILES = 2;
+const MAX_FILES = 6;
 
 const ALLOWED_EXTENSIONS = new Set([".txt", ".docx", ".md", ".pdf"]);
 
@@ -65,6 +65,13 @@ export default function Home() {
   const isFull = files.length >= MAX_FILES;
   const hasFiles = files.length > 0;
 
+  const allFilesFailed =
+    report?.checked === true &&
+    files.length > 0 &&
+    files.every((f) => f.status === "invalid");
+
+  const isResetMode = analyses.length > 0 || allFilesFailed;
+
   const addFiles = (incoming: File[]) => {
     setUploadError("");
     setReport(null);
@@ -75,6 +82,27 @@ export default function Home() {
       setUploadError(
         `Format neacceptat: ${invalid.map((f) => f.name).join(", ")}. Sunt permise doar: .txt · .docx · .md · .pdf`
       );
+      return;
+    }
+
+    // Check for duplicate / identical files by filename
+    const existingNames = new Set(files.map((f) => f.name.toLowerCase()));
+    const seenIncoming = new Set<string>();
+    const duplicateNames: string[] = [];
+
+    for (const f of incoming) {
+      const lowerName = f.name.toLowerCase();
+      if (existingNames.has(lowerName) || seenIncoming.has(lowerName)) {
+        duplicateNames.push(f.name);
+      }
+      seenIncoming.add(lowerName);
+    }
+
+    if (duplicateNames.length > 0) {
+      setUploadError(
+        `Nu puteți încărca fișiere identice (${duplicateNames.join(", ")}). Vă rugăm să selectați documente diferite.`
+      );
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
 
@@ -146,6 +174,11 @@ export default function Home() {
 
             // 2. Count letters
             const count = countLetters(rawText);
+            if (count === 0) {
+              throw new Error(
+                "Documentul nu conține text analizabil (posibil imagine fără strat de text sau fișier gol)."
+              );
+            }
             const hasEnoughLetters = count >= MIN_LETTERS_REQUIRED;
 
             // Always compute analysis regardless of letter count
@@ -485,7 +518,7 @@ export default function Home() {
             onClick={() => inputRef.current?.click()}
             title={
               isFull
-                ? "Limita de fișiere atinsă (maxim 2)"
+                ? `Limita de fișiere atinsă (maxim ${MAX_FILES})`
                 : "Adaugă fișier (.txt, .docx, .md, .pdf)"
             }
             aria-label="Adaugă fișier"
@@ -503,20 +536,20 @@ export default function Home() {
           </button>
 
           <button
-            className={`btn-arrow flex-shrink-0 ${analyses.length > 0 ? "btn-reset" : ""}`}
-            disabled={analyses.length > 0 ? false : (!hasFiles || isValidating)}
-            onClick={analyses.length > 0 ? handleReset : handleSubmit}
+            className={`btn-arrow flex-shrink-0 ${isResetMode ? "btn-reset" : ""}`}
+            disabled={isResetMode ? false : (!hasFiles || isValidating)}
+            onClick={isResetMode ? handleReset : handleSubmit}
             title={
               isValidating
                 ? "Se procesează..."
-                : analyses.length > 0
-                  ? "Resetează analiza și elimină fișierele"
+                : isResetMode
+                  ? "Resetează și elimină fișierele"
                   : hasFiles
                     ? "Analizează fișierele"
                     : "Adaugă cel puțin un fișier"
             }
             aria-label={
-              analyses.length > 0 ? "Resetează analiza" : "Analizează fișierele"
+              isResetMode ? "Resetează analiza" : "Analizează fișierele"
             }
           >
             {isValidating ? (
@@ -540,7 +573,7 @@ export default function Home() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-            ) : analyses.length > 0 ? (
+            ) : isResetMode ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="w-4 h-4"
@@ -586,7 +619,7 @@ export default function Home() {
                 <DocumentSummary
                   key={`${analysis.fileName}-${index}`}
                   analysis={analysis}
-                  colorScheme={index === 0 ? "purple" : "blue"}
+                  colorScheme="purple"
                 />
               ))}
             </div>

@@ -21,6 +21,18 @@ export interface CharacterFrequency {
   isVowel?: boolean;
 }
 
+export interface WordFrequency {
+  word: string;
+  count: number;
+  relativeFrequency: number; // percentage (e.g. 5.12)
+}
+
+export interface InvisibleCharDetail {
+  name: string;
+  code: string;
+  count: number;
+}
+
 export interface DocumentAnalysis {
   fileName: string;
   fileSize: number;
@@ -50,6 +62,187 @@ export interface DocumentAnalysis {
 
   letterFrequencies: CharacterFrequency[]; // sorted by count desc
   allCharFrequencies: CharacterFrequency[]; // sorted by count desc
+
+  // 5. Advanced Security & Statistical Metrics
+  shannonEntropy: number; // in bits/character
+  indexOfCoincidence: number; // Friedman Index of Coincidence (IoC)
+  invisibleCharsCount: number;
+  hasInvisibleChars: boolean;
+  invisibleCharsDetails: InvisibleCharDetail[];
+  totalWords: number;
+  totalSentences: number;
+  uniqueWordsCount: number;
+  typeTokenRatio: number; // percentage (uniqueWords / totalWords * 100)
+  averageWordLength: number; // average letters per word
+  topWords: WordFrequency[];
+  cosineSimilarityWithStandard: number; // percentage 0 - 100%
+}
+
+export const INVISIBLE_CHARS_PATTERNS: { regex: RegExp; name: string; code: string }[] = [
+  { regex: /\u200B/g, name: "Zero-Width Space", code: "U+200B" },
+  { regex: /\u200C/g, name: "Zero-Width Non-Joiner", code: "U+200C" },
+  { regex: /\u200D/g, name: "Zero-Width Joiner", code: "U+200D" },
+  { regex: /\u2060/g, name: "Word Joiner", code: "U+2060" },
+  { regex: /\uFEFF/g, name: "Zero-Width No-Break Space / BOM", code: "U+FEFF" },
+  { regex: /\u00AD/g, name: "Soft Hyphen", code: "U+00AD" },
+  { regex: /\u200E/g, name: "Left-to-Right Mark", code: "U+200E" },
+  { regex: /\u200F/g, name: "Right-to-Left Mark", code: "U+200F" },
+  { regex: /[\u202A-\u202E]/g, name: "Directional Embed/Override", code: "U+202A-202E" },
+  { regex: /[\u2066-\u2069]/g, name: "Directional Isolate", code: "U+2066-2069" },
+];
+
+export function computeShannonEntropy(
+  charMap: Map<string, number>,
+  totalCount: number
+): number {
+  if (totalCount <= 0) return 0;
+  let entropy = 0;
+  for (const count of charMap.values()) {
+    if (count > 0) {
+      const p = count / totalCount;
+      entropy -= p * Math.log2(p);
+    }
+  }
+  return Number(entropy.toFixed(3));
+}
+
+export function detectInvisibleCharacters(rawText: string): {
+  count: number;
+  hasInvisible: boolean;
+  details: InvisibleCharDetail[];
+} {
+  const details: InvisibleCharDetail[] = [];
+  let count = 0;
+
+  for (const pattern of INVISIBLE_CHARS_PATTERNS) {
+    const matches = rawText.match(pattern.regex);
+    const patternCount = matches ? matches.length : 0;
+    if (patternCount > 0) {
+      count += patternCount;
+      details.push({
+        name: pattern.name,
+        code: pattern.code,
+        count: patternCount,
+      });
+    }
+  }
+
+  return {
+    count,
+    hasInvisible: count > 0,
+    details,
+  };
+}
+
+export function computeIndexOfCoincidence(
+  letterFrequencies: CharacterFrequency[],
+  totalLetters: number
+): number {
+  if (totalLetters <= 1) return 0;
+  let sumProd = 0;
+  for (const item of letterFrequencies) {
+    if (item.count > 1) {
+      sumProd += item.count * (item.count - 1);
+    }
+  }
+  const denominator = totalLetters * (totalLetters - 1);
+  return Number((sumProd / denominator).toFixed(4));
+}
+
+export function countWordsAndSentences(rawText: string): {
+  totalWords: number;
+  totalSentences: number;
+  uniqueWordsCount: number;
+  typeTokenRatio: number;
+  averageWordLength: number;
+  topWords: WordFrequency[];
+} {
+  const words = rawText.toLowerCase().match(/[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu) || [];
+  const totalWords = words.length;
+
+  const sentenceChunks = rawText
+    .split(/[.!?…]+(?:\s+|$)/u)
+    .filter((s) => s.trim().length > 0);
+  const totalSentences =
+    sentenceChunks.length > 0 ? sentenceChunks.length : totalWords > 0 ? 1 : 0;
+
+  const wordMap = new Map<string, number>();
+  let totalLettersInWords = 0;
+  for (const w of words) {
+    wordMap.set(w, (wordMap.get(w) || 0) + 1);
+    totalLettersInWords += w.replace(/[^\p{L}\p{N}]/gu, "").length || w.length;
+  }
+
+  const uniqueWordsCount = wordMap.size;
+  const typeTokenRatio =
+    totalWords > 0 ? Number(((uniqueWordsCount / totalWords) * 100).toFixed(2)) : 0;
+  const averageWordLength =
+    totalWords > 0 ? Number((totalLettersInWords / totalWords).toFixed(2)) : 0;
+
+  const sortedWords = Array.from(wordMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const topWords: WordFrequency[] = sortedWords.map(([word, count]) => ({
+    word,
+    count,
+    relativeFrequency: totalWords > 0 ? Number(((count / totalWords) * 100).toFixed(2)) : 0,
+  }));
+
+  return {
+    totalWords,
+    totalSentences,
+    uniqueWordsCount,
+    typeTokenRatio,
+    averageWordLength,
+    topWords,
+  };
+}
+
+export function computeCosineSimilarity(
+  vec1: Record<string, number> | Map<string, number>,
+  vec2: Record<string, number> | Map<string, number>
+): number {
+  const getVal = (
+    v: Record<string, number> | Map<string, number>,
+    key: string
+  ): number => {
+    if (v instanceof Map) {
+      return v.get(key) || 0;
+    }
+    return v[key] || 0;
+  };
+
+  const keys = new Set<string>();
+  if (vec1 instanceof Map) {
+    for (const k of vec1.keys()) keys.add(k);
+  } else {
+    for (const k of Object.keys(vec1)) keys.add(k);
+  }
+
+  if (vec2 instanceof Map) {
+    for (const k of vec2.keys()) keys.add(k);
+  } else {
+    for (const k of Object.keys(vec2)) keys.add(k);
+  }
+
+  let dotProduct = 0;
+  let norm1Sq = 0;
+  let norm2Sq = 0;
+
+  for (const k of keys) {
+    const val1 = getVal(vec1, k);
+    const val2 = getVal(vec2, k);
+    dotProduct += val1 * val2;
+    norm1Sq += val1 * val1;
+    norm2Sq += val2 * val2;
+  }
+
+  const normProduct = Math.sqrt(norm1Sq) * Math.sqrt(norm2Sq);
+  if (normProduct === 0) return 0;
+
+  const sim = (dotProduct / normProduct) * 100;
+  return Number(Math.min(100, Math.max(0, sim)).toFixed(2));
 }
 
 export function countLetters(text: string): number {
@@ -246,6 +439,36 @@ export function analyzeDocumentText(
       ? letterFrequencies[letterFrequencies.length - 1]
       : null;
 
+  // 5. Compute Advanced Security & Statistical Metrics
+  const shannonEntropy = computeShannonEntropy(charMap, totalCharsNoSpaces);
+  const indexOfCoincidence = computeIndexOfCoincidence(
+    letterFrequencies,
+    totalLetters
+  );
+  const {
+    count: invisibleCharsCount,
+    hasInvisible: hasInvisibleChars,
+    details: invisibleCharsDetails,
+  } = detectInvisibleCharacters(rawText);
+
+  const {
+    totalWords,
+    totalSentences,
+    uniqueWordsCount,
+    typeTokenRatio,
+    averageWordLength,
+    topWords,
+  } = countWordsAndSentences(rawText);
+
+  const observedLetterMap: Record<string, number> = {};
+  for (const item of letterFrequencies) {
+    observedLetterMap[item.char] = item.relativeFrequency;
+  }
+  const cosineSimilarityWithStandard = computeCosineSimilarity(
+    observedLetterMap,
+    detectedLang.standardFreq
+  );
+
   return {
     fileName,
     fileSize,
@@ -266,6 +489,18 @@ export function analyzeDocumentText(
     leastFrequentLetter,
     letterFrequencies,
     allCharFrequencies,
+    shannonEntropy,
+    indexOfCoincidence,
+    invisibleCharsCount,
+    hasInvisibleChars,
+    invisibleCharsDetails,
+    totalWords,
+    totalSentences,
+    uniqueWordsCount,
+    typeTokenRatio,
+    averageWordLength,
+    topWords,
+    cosineSimilarityWithStandard,
   };
 }
 

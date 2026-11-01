@@ -7,7 +7,7 @@ import type { DocumentAnalysis } from "@/lib/fileParser";
 
 interface DocumentSummaryProps {
   analysis: DocumentAnalysis;
-  colorScheme?: "purple" | "blue";
+  colorScheme?: "purple";
 }
 
 export default function DocumentSummary({
@@ -48,11 +48,8 @@ export default function DocumentSummary({
     return list;
   }, [analysis, filterMode, sortBy, sortOrder]);
 
-  const primaryColor = colorScheme === "purple" ? "#8b5cf6" : "#3b82f6";
-  const primaryColorLight =
-    colorScheme === "purple"
-      ? "rgba(139, 92, 246, 0.65)"
-      : "rgba(59, 130, 246, 0.65)";
+  const primaryColor = "#8b5cf6";
+  const primaryColorLight = "rgba(139, 92, 246, 0.65)";
 
   useEffect(() => {
     if (!barCanvasRef.current) return;
@@ -239,10 +236,7 @@ export default function DocumentSummary({
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorScheme === "purple"
-              ? "bg-purple-100 text-purple-600"
-              : "bg-blue-100 text-blue-600"
-              }`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-100 text-purple-600`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -270,10 +264,9 @@ export default function DocumentSummary({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-3">
-
+      <div className="space-y-3">
         {analysis.totalLetters < 50000 ? (
-          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-amber-800 font-medium bg-amber-50/90 border border-amber-200 rounded-lg px-2.5 py-1">
+          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-amber-800 font-medium px-2.5 py-1">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-4 h-4 text-amber-600 flex-shrink-0"
@@ -288,50 +281,172 @@ export default function DocumentSummary({
                 d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
               />
             </svg>
-            <span>
+            <span className="font-bold text-xs sm:text-sm">
               Atenție: fișierul are mai puține litere decât pragul recomandat de 50.000.
             </span>
           </div>
         ) : (
-          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-green-800 font-medium bg-green-50/90 border border-green-200 rounded-lg px-2.5 py-1">
-            <span>
-              Fișierul este conform pragului recomandat de 50.000.
+          <div className="warning-summary mt-1 flex items-center gap-1.5 text-xs text-emerald-900 font-medium px-2.5 py-1">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 text-xs font-bold">
+              ✓
+            </span>
+            <span className="font-bold text-xs sm:text-sm">
+              Fișierul este conform pragului minim recomandat de 50.000.
             </span>
           </div>
         )}
 
-        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
-          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
-            Total caractere fără spații
-          </span>
-          <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
-            {analysis.totalCharsNoSpaces.toLocaleString("ro-RO")}
-          </span>
+        <div
+          className={`p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${analysis.hasInvisibleChars
+            ? "text-rose-900"
+            : "text-emerald-900"
+            }`}
+        >
+          <div className="space-y-0.5 warning-summary" style={{ margin: '5px 0' }}>
+            <div className="flex items-center gap-1.5">
+              {analysis.hasInvisibleChars ? (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-200 text-rose-800 text-xs font-bold">
+                  !
+                </span>
+              ) : (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 text-xs font-bold">
+                  ✓
+                </span>
+              )}
+              <span className="font-bold text-xs sm:text-sm">
+                {analysis.hasInvisibleChars
+                  ? `S-au detectat ${analysis.invisibleCharsCount} caractere invizibile în document!`
+                  : "Nu s-au identificat caractere invizibile / zero-width sau încercări de steganografie / prompt injection."}
+              </span>
+            </div>
+            <p className="text-[11px] opacity-90" style={{ marginLeft: 27, marginTop: 3 }}>
+              {analysis.hasInvisibleChars
+                ? `Identificate: ${analysis.invisibleCharsDetails
+                  .map((d) => `${d.name} (${d.code}) × ${d.count}`)
+                  .join(", ")}. Atenție la posibile tehnici de steganografie sau injectare ascunsă.`
+                : ""}
+            </p>
+          </div>
         </div>
 
-        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
-          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
-            Total litere din alfabet ({analysis.alphabetName})
-          </span>
-          <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
-            {analysis.totalLetters.toLocaleString("ro-RO")}
-          </span>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" style={{ margin: '15px 0 0 0' }}>
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Total caractere fără spații
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+              {analysis.totalCharsNoSpaces.toLocaleString("ro-RO")}
+            </span>
+          </div>
 
-        <div className="stat-box p-3.5 rounded-xl bg-purple-50/50 border border-purple-100/60">
-          <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
-            Total caractere distincte
-          </span>
-          <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
-            <span className="font-extrabold text-base sm:text-lg text-purple-700">
-              {analysis.totalDistinctChars}
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Total litere din alfabet ({analysis.alphabetName})
             </span>
-            <span
-              className="text-xs text-gray-500 font-medium"
-              title={`Alfabetul ${analysis.alphabetName} conține ${analysis.alphabetTotalLetters} litere conform regex`}
-            >
-              ({analysis.alphabetTotalLetters} litere cf. regex-ul alfabetului)
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+              {analysis.totalLetters.toLocaleString("ro-RO")}
             </span>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Total caractere distincte
+            </span>
+            <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
+              <span className="font-extrabold text-base sm:text-lg text-purple-700">
+                {analysis.totalDistinctChars}
+              </span>
+              <span
+                className="text-xs text-gray-500 font-medium"
+                title={`Alfabetul ${analysis.alphabetName} conține ${analysis.alphabetTotalLetters} litere conform regex`}
+              >
+                ({analysis.alphabetTotalLetters} litere cf. regex-ul alfabetului)
+              </span>
+            </div>
+          </div>
+
+
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Similaritate Cosinus cu Limba Detectată
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+              {analysis.cosineSimilarityWithStandard.toFixed(2)}%
+            </span>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Entropia Shannon (H)
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+              {analysis.shannonEntropy.toFixed(3)} <span className="text-xs text-gray-500 font-medium"> biți / car.</span>
+            </span>
+            <p className="text-[10px] text-gray-500 mt-1.5 leading-snug">
+              {analysis.shannonEntropy < 3.0
+                ? "Entropie scăzută: grad ridicat de redundanță / structură repetitivă."
+                : analysis.shannonEntropy <= 4.8
+                  ? "Entropie specifică limbajului natural autentic (3.5 - 4.5 biți)."
+                  : "Entropie ridicată: posibile date criptate, comprimate sau aleatoare."}
+            </p>
+          </div>
+
+          <div className="stat-box p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/60">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">
+              Index de Coincidență Friedman (IoC)
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5">
+              {analysis.indexOfCoincidence.toFixed(4)}
+            </span>
+            <p className="text-[10px] text-gray-500 mt-1.5 leading-snug">
+              {analysis.indexOfCoincidence >= 0.065
+                ? "Distribuție monoalfabetică normală (specifică limbajului natural)."
+                : analysis.indexOfCoincidence >= 0.045
+                  ? "Valoare intermediară (posibil text tehnic sau scurt)."
+                  : "Distribuție aplatizată (indiciu cifru polialfabetic / aleator)."}
+            </p>
+          </div>
+
+
+          <div className="stat-box p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+              Număr Cuvinte
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5 truncate">
+              {analysis.totalWords.toLocaleString("ro-RO")}
+            </span>
+          </div>
+
+          <div className="stat-box p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+              Număr Propoziții
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5 truncate">
+              {analysis.totalSentences.toLocaleString("ro-RO")}
+            </span>
+          </div>
+
+          <div className="stat-box p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+              Medie Litere / Cuvânt
+            </span>
+            <span className="font-extrabold text-base sm:text-lg text-purple-700 block mt-0.5 truncate">
+              {analysis.averageWordLength.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="stat-box p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+              Diversitate lexicală (Cuvinte Unice / Total)
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="font-extrabold text-base sm:text-lg text-purple-700">
+                {analysis.typeTokenRatio.toFixed(1)}%
+              </span>
+              <span className="text-[10px] text-gray-500 font-medium">
+                ({analysis.uniqueWordsCount}/{analysis.totalWords})
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -486,6 +601,50 @@ export default function DocumentSummary({
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+
+      <div className="space-y-3 pt-3 border-t border-purple-100/60">
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between" style={{ marginBottom: 15 }}>
+            <h4 className="font-bold text-sm text-gray-900">
+              Top 10 cele mai frecvente cuvinte
+            </h4>
+          </div>
+
+          {analysis.topWords.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
+              {analysis.topWords.map((item, idx) => (
+                <div
+                  key={`${componentId}-word-${idx}-${item.word}`}
+                  style={{ padding: '6px 10px' }}
+                  className="flex items-center justify-between p-2.5 rounded bg-purple-50/40 border border-purple-100/60 hover:bg-purple-50/80 transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-md text-purple-800 text-[10px] font-extrabold flex items-center justify-center">
+                      #{idx + 1}
+                    </span>
+                    <span className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
+                      {item.word}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 flex-shrink-0 text-right">
+                    <span className="text-xs font-bold text-purple-700">
+                      {item.count.toLocaleString("ro-RO")}
+                    </span>
+                    <span className="text-[10px] font-medium text-gray-500">
+                      ({item.relativeFrequency.toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500 italic p-3 text-center bg-gray-50 rounded-xl">
+              Nu au fost identificate cuvinte în text.
+            </div>
+          )}
         </div>
       </div>
 
