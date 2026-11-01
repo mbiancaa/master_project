@@ -417,7 +417,7 @@ export default function DocumentSummary({
                 <span className="font-bold text-xs sm:text-sm">
                   {analysis.hasInvisibleChars
                     ? `S-au detectat ${analysis.invisibleCharsCount} caractere invizibile în document!`
-                    : "Nu s-au identificat caractere invizibile / zero-width sau încercări de steganografie / prompt injection."}
+                    : "Nu s-au identificat caractere invizibile / zero-width."}
                 </span>
               </div>
               <p className="text-[11px] opacity-90" style={{ marginLeft: 27, marginTop: 3 }}>
